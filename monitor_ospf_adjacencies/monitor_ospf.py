@@ -1,4 +1,4 @@
-rom jnpr.junos import Device
+from jnpr.junos import Device
 from jnpr.junos.op.ospf import OspfNeighborTable
 import smtplib
 
