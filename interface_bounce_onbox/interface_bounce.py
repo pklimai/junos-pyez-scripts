@@ -21,47 +21,46 @@ def config_xml(interface_name, disable_attributes):      # (3)
         </configuration>
     """.format(interface_name, disable_attributes)
 
-def change_config(dev, delta_config, log_message):       # (4)
+def change_config(dev_cfg, delta_config, log_message):       # (4)
     print "%s: Locking the configuration" % log_message
     try:
-        dev.cu.lock()
+        dev_cfg.lock()
     except LockError:
         print "Error: Unable to lock configuration"
         return False
 
     print "%s: Loading configuration changes" % log_message
     try:
-        dev.cu.load(delta_config, format="xml", merge=True)
+        dev_cfg.load(delta_config, format="xml", merge=True)
     except ConfigLoadError as err:
         print "Unable to load configuration changes: \n" + err
         print "Unlocking the configuration"
         try:
-            dev.cu.unlock()
+            dev_cfg.unlock()
         except UnlockError:
             print "Error: Unable to unlock configuration"
         return False
    
     print "%s: Committing the configuration" % log_message
     try:
-        dev.cu.commit()
+        dev_cfg.commit()
     except CommitError:
         print "Error: Unable to commit configuration"
         print "Unlocking the configuration"
         try:
-            dev.cu.unlock()
+            dev_cfg.unlock()
         except UnlockError:
             print "Error: Unable to unlock configuration"
         return False
    
     print "%s: Unlocking the configuration" % log_message
     try:
-        dev.cu.unlock()
+        dev_cfg.unlock()
     except UnlockError:
         print "Error: Unable to unlock configuration"
         return False
 
     return True
-
 
 def main():                                      # (5)
     parser = argparse.ArgumentParser()           # (6) 
@@ -71,11 +70,11 @@ def main():                                      # (5)
 
     with Device() as dev:                        # (7)
         dev.bind( cu=Config )                    # (8) 
-        if change_config(dev, config_xml(args.interface, ""),     # (9)
+        if change_config(dev.cu, config_xml(args.interface, ""),     # (9)
                 "Disabling interface"):
             print "Waiting %s seconds..." % args.delay
             sleep(float(args.delay))                              # (10)
-            if change_config(dev, config_xml(args.interface, "delete='delete'"), 
+            if change_config(dev.cu, config_xml(args.interface, "delete='delete'"), 
                     "Enabling interface"):                        # (11)
                 print "Interface bounce script finished successfully."
             else:
