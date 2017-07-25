@@ -6,6 +6,7 @@ MAIL_LOGIN = "user@example.com"                            # (2)
 MAIL_PW = "xxx"
 TO_ADDR = "admin@example.com"
 MAIL_SERVER = "smtp.example.com"
+SMTP_SSL_PORT = 587
 SUBJ = "OSPF adjacency test results"
 
 USER = "lab"                                               # (3)
@@ -47,7 +48,7 @@ def main():                                                # (6)
                                                str_result(result3))
     msg = "From: %s\nTo: %s\nSubject: %s\n\n%s\n" % (MAIL_LOGIN,
                                                      TO_ADDR, SUBJ, body_msg)
-    mailserver = smtplib.SMTP(MAIL_SERVER, 587)
+    mailserver = smtplib.SMTP(MAIL_SERVER, SMTP_SSL_PORT)
     mailserver.starttls()
     mailserver.login(MAIL_LOGIN, MAIL_PW)
     mailserver.sendmail(MAIL_LOGIN, TO_ADDR, msg)
