@@ -1,21 +1,20 @@
-from jnpr.junos import Device
+from jnpr.junos import Device                              # (1)
 from jnpr.junos.op.ospf import OspfNeighborTable
 import smtplib
 
-MAIL_LOGIN = "user@example.com"
+MAIL_LOGIN = "user@example.com"                            # (2)
 MAIL_PW = "xxx"
 TO_ADDR = "admin@example.com"
 MAIL_SERVER = "smtp.example.com"
-
 SUBJ = "OSPF adjacency test results"
 
-USER = "lab"
+USER = "lab"                                               # (3)
 PASSWD = "lab123"
-R1 = '10.254.0.35'
-R2 = '10.254.0.37'
-R3 = '10.254.0.38'
+R1 = "10.254.0.35"
+R2 = "10.254.0.37"
+R3 = "10.254.0.38"
 
-def check_ospf_full_adjacencies(dev, neighbor_count):
+def check_ospf_full_adjacencies(dev, neighbor_count):      # (4)
     ospf_table = OspfNeighborTable(dev)    # Create an instance of the Table
     ospf_table.get()                       # Populate the Table
     if len(ospf_table) != neighbor_count:
@@ -25,10 +24,10 @@ def check_ospf_full_adjacencies(dev, neighbor_count):
             return False
     return True
 
-def str_result(test_result):
+def str_result(test_result):                               # (5)
     return "Success" if test_result else "Fail"
 
-def main():
+def main():                                                # (6)
     with Device(host=R1, user=USER, password=PASSWD) as dev:
         result1 = check_ospf_full_adjacencies(dev, 3)
         print("Test OSPF adjacencies on R1: " + str_result(result1))
@@ -41,16 +40,18 @@ def main():
         result3 = check_ospf_full_adjacencies(dev, 2)
         print("Test OSPF adjacencies on R3: " + str_result(result3))
 
-    print("Sending email.")
+    print("Sending email.")                                # (7)
 
-    body_msg = "Test results: %s, %s, %s\n" % (str_result(result1), str_result(result2), str_result(result3))
-    msg = "From: %s\nTo: %s\nSubject: %s\n\n%s\n" % (MAIL_LOGIN, TO_ADDR, SUBJ, body_msg)
-
+    body_msg = "Test results: %s, %s, %s\n" % (str_result(result1),
+                                               str_result(result2),
+                                               str_result(result3))
+    msg = "From: %s\nTo: %s\nSubject: %s\n\n%s\n" % (MAIL_LOGIN,
+                                                     TO_ADDR, SUBJ, body_msg)
     mailserver = smtplib.SMTP(MAIL_SERVER, 587)
     mailserver.starttls()
     mailserver.login(MAIL_LOGIN, MAIL_PW)
     mailserver.sendmail(MAIL_LOGIN, TO_ADDR, msg)
     mailserver.quit()
 
-if __name__ == "__main__":
+if __name__ == "__main__":                                 # (8)
     main()
