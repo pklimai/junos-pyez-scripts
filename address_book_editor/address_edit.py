@@ -1,5 +1,7 @@
 from jnpr.junos import Device
 from jnpr.junos.utils.config import Config
+from jnpr.junos.exception import *
+from ncclient.transport.errors import SSHError
 from lxml import etree
 import ipaddress
 
@@ -29,6 +31,7 @@ STR_INVALID_IP = "Invalid entry, please repeat."
 STR_ENTER_IP_DEL = "Enter IP/mask to delete >>> "
 STR_ADDRESS_DELETED = "Address deleted successfully."
 STR_PDIFF_BANNER = "\nConfig diff on the device:"
+STR_CONFIG_CHANGED = "Configuration change committed."
 
 STR_GET_CONFIG = """<configuration>
                         <security>
@@ -53,30 +56,34 @@ class InconsistentConfigException(Exception):
 def read_addresses():
     addr_book_prefixes = set()       # empty sets so far
     address_set_prefixes = set()
-    with Device(host=DEVICE_IP, user=USER, password=PASSWD) as dev:
-        resp = dev.rpc.get_config(
-                filter_xml=etree.XML(STR_GET_CONFIG.format(ADDR_BOOK_NAME)),
-                options={'inherit': 'inherit', 'database': 'committed', 'format': 'XML'})
-        if resp is not None:
-            for address_element in resp.findall("security/address-book/address"):
-                name = address_element.findtext("name")
-                ip_prefix = address_element.findtext("ip-prefix")
-                if name is not None and ip_prefix is not None:
-                    if name == ADDR_NAME_PREFIX + ip_prefix:
-                        addr_book_prefixes.add(ip_prefix)
-                    else:         # this entry was not added by script - ignore
-                        pass
+    try:
+        with Device(host=DEVICE_IP, user=USER, password=PASSWD) as dev:
+            resp = dev.rpc.get_config(
+                    filter_xml=etree.XML(STR_GET_CONFIG.format(ADDR_BOOK_NAME)),
+                    options={'inherit': 'inherit', 'database': 'committed', 'format': 'XML'})
+            if resp is not None:
+                for address_element in resp.findall("security/address-book/address"):
+                    name = address_element.findtext("name")
+                    ip_prefix = address_element.findtext("ip-prefix")
+                    if name is not None and ip_prefix is not None:
+                        if name == ADDR_NAME_PREFIX + ip_prefix:
+                            addr_book_prefixes.add(ip_prefix)
+                        else:         # this entry was not added by script - ignore
+                            pass
 
-            for address_set_element in resp.findall("security/address-book/address-set[name='{0}']/address"
-                                                            .format(ADDR_SET_NAME)):
-                ab_name = address_set_element.findtext("name")
-                if ab_name.startswith(ADDR_NAME_PREFIX):
-                    test_ip = ab_name[len(ADDR_NAME_PREFIX):]
-                    if test_ip in addr_book_prefixes:
-                        address_set_prefixes.add(test_ip)
-                    else:
-                        raise InconsistentConfigException("Inconsistent entry in address book")
-
+                for address_set_element in resp.findall("security/address-book/address-set[name='{0}']/address"
+                                                                .format(ADDR_SET_NAME)):
+                    ab_name = address_set_element.findtext("name")
+                    if ab_name.startswith(ADDR_NAME_PREFIX):
+                        test_ip = ab_name[len(ADDR_NAME_PREFIX):]
+                        if test_ip in addr_book_prefixes:
+                            address_set_prefixes.add(test_ip)
+                        else:
+                            raise InconsistentConfigException("Inconsistent entry in address book")
+    except ConnectRefusedError:
+        print("\n\nError: device connection refused!")
+    # except SSHError:
+    #     print("Error: device connection refused!")
     return address_set_prefixes
 
 
@@ -95,27 +102,31 @@ def sanitize_ip(address_entered):
     return result
 
 
-def change_config_with_set_commands(conf, set_commands):
-    conf.lock()
-    conf.load(set_commands, format="set")
-    print(STR_PDIFF_BANNER)
-    conf.pdiff()
-    conf.commit()
-    conf.unlock()
-
+def change_config_with_set_commands(set_commands):
+    try:
+        with Device(host=DEVICE_IP, user=USER, password=PASSWD) as dev:
+            # open and close is done automatically by context manager
+            with Config(dev, mode="exclusive") as conf:
+                # exclusive locks are treated automatically by context manager
+                conf.load(set_commands, format="set")
+                print(STR_PDIFF_BANNER)
+                conf.pdiff()
+                conf.commit()
+    except LockError:
+        print("\n\nError deleting address: configuration was locked!")
+    except ConnectRefusedError:
+        print("\n\nError: device connection refused!")
+    else:
+        print(STR_CONFIG_CHANGED)
 
 def add_address(address_sanitized):
-    with Device(host=DEVICE_IP, user=USER, password=PASSWD) as dev:
-        with Config(dev) as conf:
-            change_config_with_set_commands(conf, STR_SET_CONFIG.format(
+    change_config_with_set_commands(STR_SET_CONFIG.format(
                 ADDR_BOOK_NAME, ADDR_NAME_PREFIX, address_sanitized))
 
 
 def del_address(address_sanitized):
-    with Device(host=DEVICE_IP, user=USER, password=PASSWD) as dev:
-        with Config(dev) as conf:
-            change_config_with_set_commands(conf, STR_DELETE_CONFIG.format(
-                ADDR_BOOK_NAME, ADDR_NAME_PREFIX, address_sanitized))
+    change_config_with_set_commands(STR_DELETE_CONFIG.format(
+        ADDR_BOOK_NAME, ADDR_NAME_PREFIX, address_sanitized))
 
 
 def main():
@@ -137,7 +148,6 @@ def main():
                 print(STR_INVALID_IP)
             else:
                 add_address(address_sanitized)
-                print(STR_ADDRESS_ADDED)
         elif choice == "d":
             print(STR_ENTER_IP_DEL, end="")
             address_entered = input()
@@ -146,7 +156,6 @@ def main():
                 print(STR_INVALID_IP)
             else:
                 del_address(address_sanitized)
-                print(STR_ADDRESS_DELETED)
         else:
             print(STR_UNKNOWN_INPUT)
 
