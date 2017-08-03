@@ -28,7 +28,7 @@ STR_ADDRESS_ADDED = "Address added successfully."
 STR_INVALID_IP = "Invalid entry, please repeat."
 STR_ENTER_IP_DEL = "Enter IP/mask to delete >>> "
 STR_ADDRESS_DELETED = "Address deleted successfully."
-STR_PDIFF_BANNER = "Config diff on the device:"
+STR_PDIFF_BANNER = "\nConfig diff on the device:"
 
 STR_GET_CONFIG = """<configuration>
                         <security>
@@ -38,6 +38,11 @@ STR_GET_CONFIG = """<configuration>
                         </security>
                     </configuration>"""
 
+STR_SET_CONFIG = """set security address-book {0} address {1}{2} {2}
+set security address-book global address-set ALLOWED-IN address {1}{2}"""
+
+STR_DELETE_CONFIG = """delete security address-book {0} address {1}{2} {2}
+delete security address-book global address-set ALLOWED-IN address {1}{2}"""
 
 class InconsistentConfigException(Exception):
     pass
@@ -90,10 +95,6 @@ def sanitize_ip(address_entered):
     return result
 
 
-STR_SET_CONFIG = """set security address-book {0} address {1}{2} {2}
-set security address-book global address-set ALLOWED-IN address {1}{2}"""
-
-
 def change_config_with_set_commands(conf, set_commands):
     conf.lock()
     conf.load(set_commands, format="set")
@@ -110,10 +111,6 @@ def add_address(address_sanitized):
                 ADDR_BOOK_NAME, ADDR_NAME_PREFIX, address_sanitized))
 
 
-STR_DELETE_CONFIG = """delete security address-book {0} address {1}{2} {2}
-delete security address-book global address-set ALLOWED-IN address {1}{2}"""
-
-
 def del_address(address_sanitized):
     with Device(host=DEVICE_IP, user=USER, password=PASSWD) as dev:
         with Config(dev) as conf:
@@ -122,7 +119,6 @@ def del_address(address_sanitized):
 
 
 def main():
-    #addrs = []
     while True:
         print(STR_INVITE.format(DEVICE_IP, ADDR_BOOK_NAME, ADDR_SET_NAME), end="")
         choice = input().lower()
@@ -153,13 +149,6 @@ def main():
                 print(STR_ADDRESS_DELETED)
         else:
             print(STR_UNKNOWN_INPUT)
-            address_entered = input()
-            address_sanitized = sanitize_ip(address_entered)
-            if address_sanitized is None:
-                print(STR_INVALID_IP)
-            else:
-                del_address(address_sanitized)
-                print(STR_ADDRESS_DELETED)
 
 if __name__ == "__main__":
     main()
