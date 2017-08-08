@@ -70,9 +70,10 @@ def read_addresses():                                      # (7)
                     ip_prefix = address_element.findtext("ip-prefix")
                     if name is not None and ip_prefix is not None:
                         if name == ADDR_NAME_PREFIX + ip_prefix:
-                            addr_book_prefixes.add(ip_prefix)
-                        else:         # this entry was not added by script - ignore
-                            pass
+                            if sanitize_ip(ip_prefix) is not None:
+                                addr_book_prefixes.add(ip_prefix)
+                        else:
+                            pass # this entry was not added by script - ignore
 
                 for address_set_element in resp.findall(                  # (10)
                         "security/address-book/address-set[name='{0}']/address"
