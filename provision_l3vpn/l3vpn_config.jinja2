@@ -1,5 +1,7 @@
 groups {
-    VPN-SCRIPT {
+    replace:
+    L3VPN-SCRIPT {
+        {% if VPN_data %}
         interfaces {
         {% for VPN_entry in VPN_data %}
             {{ VPN_entry.interface_name }} {
@@ -39,6 +41,7 @@ groups {
             }
         {% endfor %}
         }
+        {% endif %}
     }
 }
-apply-groups VPN-SCRIPT;
+apply-groups L3VPN-SCRIPT;
