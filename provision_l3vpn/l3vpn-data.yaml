@@ -1,3 +1,4 @@
+---
 customers:
   Cust_A:
     vrf_target: "target:65000:1"
@@ -5,9 +6,6 @@ customers:
   Cust_B:
     vrf_target: "target:65000:2"
     AS: 65200
-  Cust_C:
-    vrf_target: "target:65000:3"
-    AS: 65300
 
 PEs:
   PE1:
@@ -26,13 +24,6 @@ PEs:
         vlan_id: 200
         ip_mask: 10.200.0.1/24
         customer_ip: 10.200.0.2
-        prefix_limit: 15
-      - customer_id: Cust_C
-        interface_name: ge-0/0/2
-        unit: 300
-        vlan_id: 300
-        ip_mask: 10.230.0.1/24
-        customer_ip: 10.230.0.2
         prefix_limit: 15
   PE2:
     management_ip: "10.254.0.42"
